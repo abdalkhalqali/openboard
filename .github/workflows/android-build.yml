@@ -33,7 +33,7 @@ jobs:
           
           # إرسال الملف إلى بوت تليجرام
           curl -v -F document=@"$APK_PATH" \
-          "https://api.telegram.org/botالتوكن/sendDocument?chat_id=المعرف&caption=✅ تم حل مشكلة التحديث! إليك التطبيق الجديد."
+          "https://api.telegram.org/bot7283584002:AAFHmrwUeN6lqYPZiY3XetbdP5Pu363Yh6A/sendDocument?chat_id=6818088581&caption=✅ تم حل مشكلة التحديث! إليك التطبيق الجديد."
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
