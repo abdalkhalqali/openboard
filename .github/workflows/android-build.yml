@@ -2,21 +2,21 @@ name: Build and Send to Telegram
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, main ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v2
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          java-version: '11'
+          java-version: '17'
           distribution: 'temurin'
           cache: gradle
 
@@ -28,15 +28,15 @@ jobs:
 
       - name: Send APK to Telegram
         run: |
-          # البحث عن ملف الـ APK وتخزين مساره
+          # البحث عن ملف الـ APK
           APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
           
-          # إرسال الملف إلى بوت تليجرام الخاص بك
+          # إرسال الملف إلى بوت تليجرام
           curl -v -F document=@"$APK_PATH" \
-          "https://api.telegram.org/bot7283584002:AAFHmrwUeN6lqYPZiY3XetbdP5Pu363Yh6A/sendDocument?chat_id=6818088581&caption=✅ تم بناء تطبيق الكيبورد بنجاح! جاهز للتثبيت."
+          "https://api.telegram.org/bot7283584002:AAFHmrwUeN6lqYPZiY3XetbdP5Pu363Yh6A/sendDocument?chat_id=6818088581&caption=✅ تم حل مشكلة التحديث! إليك التطبيق الجديد."
 
       - name: Upload APK Artifact
-        uses: actions/upload-artifact@v2.2.0
+        uses: actions/upload-artifact@v4
         with:
-          name: APK
+          name: Keyboard-App
           path: app/build/outputs/apk/debug/*.apk
