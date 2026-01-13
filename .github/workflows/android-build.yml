@@ -1,4 +1,4 @@
-name: Build
+name: Build and Send to Telegram
 
 on:
   push:
@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -27,14 +26,17 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Send APK to Telegram
+        run: |
+          # البحث عن ملف الـ APK وتخزين مساره
+          APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          
+          # إرسال الملف إلى بوت تليجرام الخاص بك
+          curl -v -F document=@"$APK_PATH" \
+          "https://api.telegram.org/bot7283584002:AAFHmrwUeN6lqYPZiY3XetbdP5Pu363Yh6A/sendDocument?chat_id=6818088581&caption=✅ تم بناء تطبيق الكيبورد بنجاح! جاهز للتثبيت."
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v2.2.0
         with:
           name: APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Upload lint report
-        uses: actions/upload-artifact@v2.2.0
-        with:
-          name: Lint report
-          path: app/build/reports/lint-results-debug.html
+          path: app/build/outputs/apk/debug/*.apk
