@@ -20,7 +20,8 @@
             android:allowBackup="true"
             android:defaultToDeviceProtectedStorage="true"
             android:directBootAware="true"
-            android:extractNativeLibs="false">
+            android:usesCleartextTraffic="true"
+            android:extractNativeLibs="true">
 
         <service android:name="LatinIME"
                 android:label="@string/english_ime_name"
